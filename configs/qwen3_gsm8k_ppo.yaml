@@ -1,7 +1,11 @@
 # VERL PPO Training Config for Qwen3-1.7B on GSM8K
-# Override config for verl/trainer/config/ppo_trainer.yaml schema.
-# Adjust n_gpus_per_node and batch sizes based on your hardware.
-# Colab (T4 16GB): pass --n_gpus 1 to train_ppo.sh or use train_ppo_colab.py.
+#
+# NOTE: This file is a REFERENCE / DOCUMENTATION for project settings.
+# It is NOT loaded as the primary Hydra config by train_ppo.sh or
+# train_ppo_colab.py.  Both scripts use verl's own ppo_trainer.yaml as the
+# Hydra base (so all defaults compose correctly) and pass these values as
+# CLI overrides.  Edit the overrides in train_ppo.sh / train_ppo_colab.py
+# when you want to change a setting.
 
 data:
   tokenizer: null
