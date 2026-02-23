@@ -96,6 +96,38 @@ reward:
   custom_reward_function:
     path: rewards/gsm8k_reward.py
     name: compute_score
+  reward_model:
+    enable: false
+    enable_resource_pool: false
+    n_gpus_per_node: 0
+    nnodes: 0
+    model_path: null
+    prompt_length: 2048
+    response_length: 2048
+    rollout:
+      name: vllm
+      dtype: bfloat16
+      gpu_memory_utilization: 0.5
+      enforce_eager: true
+      cudagraph_capture_sizes: null
+      free_cache_engine: true
+      data_parallel_size: 1
+      expert_parallel_size: 1
+      tensor_model_parallel_size: 1
+      max_num_batched_tokens: 8192
+      max_model_len: null
+      max_num_seqs: 1024
+      load_format: auto
+      engine_kwargs: {}
+      limit_images: null
+      enable_chunked_prefill: true
+      enable_prefix_caching: true
+      disable_log_stats: true
+      skip_tokenizer_init: false
+    sandbox_fusion:
+      url: null
+      max_concurrent: 64
+      memory_limit_mb: 1024
 
 # Keep default Ray init kwargs unless explicitly overridden.
 sandbox_fusion:
