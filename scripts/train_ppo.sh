@@ -20,5 +20,9 @@ python -m verl.trainer.main_ppo \
     --config-path "$(pwd)/configs" \
     --config-name qwen3_gsm8k_ppo \
     trainer.n_gpus_per_node="${N_GPUS}" \
+    reward.custom_reward_function.path="$(pwd)/rewards/gsm8k_reward.py" \
+    reward.custom_reward_function.name=compute_score \
+    ray_kwargs={} \
+    transfer_queue.enable=false \
     trainer.experiment_name="${EXPERIMENT}" \
     "$@"

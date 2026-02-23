@@ -93,6 +93,13 @@ sandbox_fusion:
   api_key: null
   timeout: null
 
+# Keep default empty init kwargs unless explicitly overridden.
+ray_kwargs: {}
+
+# Disable transfer queue by default for single-GPU Colab runs.
+transfer_queue:
+  enable: false
+
 reward_model:
   num_workers: null
   reward_manager: null

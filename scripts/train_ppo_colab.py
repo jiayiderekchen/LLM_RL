@@ -70,13 +70,28 @@ def main():
     config.trainer.experiment_name = args.experiment_name
     config.trainer.logger = ["console", "wandb"] if args.use_wandb else ["console"]
 
-    # ── Reward function ─────────────────────────────────────────────────────
-    # Use VERL's custom_reward_function config (avoids reward_model struct conflict)
+    # ── Reward function and compatibility keys ──────────────────────────────
+    # Keep both legacy and new reward keys for cross-version VERL compatibility.
     OmegaConf.set_struct(config, False)
     config.custom_reward_function = OmegaConf.create({
         "path": os.path.join(args.repo_dir, "rewards/gsm8k_reward.py"),
         "name": "compute_score",
     })
+    config.reward = OmegaConf.create({
+        "custom_reward_function": {
+            "path": os.path.join(args.repo_dir, "rewards/gsm8k_reward.py"),
+            "name": "compute_score",
+        }
+    })
+    # Newer VERL versions expect these top-level keys in struct mode.
+    if "sandbox_fusion" not in config:
+        config.sandbox_fusion = OmegaConf.create(
+            {"enable": None, "url": None, "api_key": None, "timeout": None}
+        )
+    if "ray_kwargs" not in config:
+        config.ray_kwargs = OmegaConf.create({})
+    if "transfer_queue" not in config:
+        config.transfer_queue = OmegaConf.create({"enable": False})
     OmegaConf.set_struct(config, True)
 
     print("Final config:")
