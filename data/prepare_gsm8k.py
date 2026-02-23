@@ -40,6 +40,7 @@ def prepare(output_dir: str = "data/gsm8k") -> None:
                 {
                     "prompt": format_prompt(sample["question"]),
                     "answer": sample["answer"],
+                    "data_source": "gsm8k",
                 }
             )
 
