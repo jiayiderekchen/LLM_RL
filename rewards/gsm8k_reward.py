@@ -50,13 +50,15 @@ def extract_answer(text: str) -> Optional[str]:
     return None
 
 
-def compute_score(solution_str: str, ground_truth: str) -> float:
+def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_info=None) -> float:
     """
     VERL reward interface.
 
     Args:
+        data_source: Dataset name (e.g. 'gsm8k'). Unused here.
         solution_str: Full model-generated response text.
         ground_truth: Ground-truth answer string from GSM8K (contains #### <num>).
+        extra_info: Optional extra metadata. Unused here.
 
     Returns:
         1.0 if correct, 0.0 otherwise.
@@ -82,7 +84,7 @@ if __name__ == "__main__":
     ]
     passed = 0
     for sol, gt, expected in cases:
-        got = compute_score(sol, gt)
+        got = compute_score("gsm8k", sol, gt)
         status = "PASS" if got == expected else "FAIL"
         if status == "PASS":
             passed += 1
