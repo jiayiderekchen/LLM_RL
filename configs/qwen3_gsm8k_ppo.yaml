@@ -4,12 +4,27 @@
 
 data:
   tokenizer: null
+  use_shm: false
   train_files: data/gsm8k/train.parquet
   val_files: data/gsm8k/test.parquet
+  train_max_samples: -1
+  val_max_samples: -1
   prompt_key: prompt
+  reward_fn_key: data_source
   max_prompt_length: 512
   max_response_length: 1024
   train_batch_size: 128
+  val_batch_size: null
+  return_raw_input_ids: false
+  return_raw_chat: true
+  return_full_prompt: false
+  shuffle: true
+  seed: null
+  dataloader_num_workers: 8
+  trust_remote_code: false
+  sampler:
+    class_path: null
+    class_name: null
 
 actor_rollout_ref:
   hybrid_engine: True
@@ -82,66 +97,82 @@ custom_reward_function:
   name: compute_score
 
 reward:
+  num_workers: 8
   custom_reward_function:
     path: rewards/gsm8k_reward.py
     name: compute_score
+  reward_manager: null
+  reward_model:
+    enable: null
+    enable_resource_pool: null
+    n_gpus_per_node: null
+    nnodes: null
+    model_path: null
+    # Legacy-compatible fields kept to avoid migration breakage across versions.
+    reward_loop_source: null
+    reward_loop_module_path: null
+    reward_loop_class_name: null
+    model:
+      path: null
+      external_lib: null
+      trust_remote_code: null
+    rollout:
+      name: null
+      dtype: null
+      gpu_memory_utilization: null
+      enforce_eager: null
+      cudagraph_capture_sizes: null
+      free_cache_engine: null
+      data_parallel_size: null
+      expert_parallel_size: null
+      tensor_model_parallel_size: null
+      max_num_batched_tokens: null
+      max_model_len: null
+      max_num_seqs: null
+      load_format: null
+      engine_kwargs: null
+      limit_images: null
+      enable_chunked_prefill: null
+      enable_prefix_caching: null
+      disable_log_stats: null
+      skip_tokenizer_init: null
+    prompt_length: null
+    response_length: null
 
 sandbox_fusion:
-  # Keep disabled; present only to satisfy strict config schema in newer VERL.
-  enable: null
+  # New schema fields (keep null to disable sandbox integration).
   url: null
-  api_key: null
-  timeout: null
+  max_concurrent: null
+  memory_limit_mb: null
 
-# Keep default empty init kwargs unless explicitly overridden.
-ray_kwargs: {}
+# Keep default Ray init kwargs unless explicitly overridden.
+ray_kwargs:
+  ray_init:
+    num_cpus: null
+  timeline_json_file: null
 
 # Disable transfer queue by default for single-GPU Colab runs.
 transfer_queue:
   enable: false
 
-reward_model:
-  num_workers: null
-  reward_manager: null
-  enable: null
-  enable_resource_pool: null
-  n_gpus_per_node: null
-  nnodes: null
-  reward_loop_source: null
-  reward_loop_module_path: null
-  reward_loop_class_name: null
-  model:
-    path: null
-    external_lib: null
-    trust_remote_code: null
-  rollout:
-    name: null
-    dtype: null
-    gpu_memory_utilization: null
-    enforce_eager: null
-    free_cache_engine: null
-    data_parallel_size: null
-    tensor_model_parallel_size: null
-    max_num_batched_tokens: null
-    max_model_len: null
-    max_num_seqs: null
-    load_format: null
-  prompt_length: null
-  response_length: null
-
 algorithm:
   gamma: 1.0
   lam: 1.0
   adv_estimator: gae
+  norm_adv_by_std_in_grpo: true
+  use_kl_in_reward: false
+  kl_penalty: kl
   kl_ctrl:
     type: fixed
     kl_coef: 1.0e-3
 
 trainer:
+  balance_batch: true
   total_epochs: 15
   project_name: gsm8k_ppo
   experiment_name: qwen3_1.7b_ppo
   logger: ['console', 'wandb']
+  log_val_generations: 0
   val_generations_to_log_to_wandb: 0
   nnodes: 1
   n_gpus_per_node: 2        # reduce to 1 for Colab
@@ -149,3 +180,13 @@ trainer:
   test_freq: 25
   default_hdfs_dir: null
   default_local_dir: checkpoints/qwen3_gsm8k_ppo
+
+global_profiler:
+  tool: null
+  steps: null
+  profile_continuous_steps: false
+  save_path: outputs/profile
+  global_tool_config:
+    nsys:
+      controller_nsight_options: {}
+      worker_nsight_options: {}
