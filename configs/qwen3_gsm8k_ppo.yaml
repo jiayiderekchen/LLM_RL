@@ -76,6 +76,40 @@ critic:
       optimizer_offload: False
   ppo_micro_batch_size_per_gpu: 4
 
+# Required by VERL's migrate_legacy_reward_impl — must be present in struct
+custom_reward_function:
+  path: rewards/gsm8k_reward.py
+  name: compute_score
+
+reward_model:
+  num_workers: null
+  reward_manager: null
+  enable: null
+  enable_resource_pool: null
+  n_gpus_per_node: null
+  nnodes: null
+  reward_loop_source: null
+  reward_loop_module_path: null
+  reward_loop_class_name: null
+  model:
+    path: null
+    external_lib: null
+    trust_remote_code: null
+  rollout:
+    name: null
+    dtype: null
+    gpu_memory_utilization: null
+    enforce_eager: null
+    free_cache_engine: null
+    data_parallel_size: null
+    tensor_model_parallel_size: null
+    max_num_batched_tokens: null
+    max_model_len: null
+    max_num_seqs: null
+    load_format: null
+  prompt_length: null
+  response_length: null
+
 algorithm:
   gamma: 1.0
   lam: 1.0
