@@ -76,6 +76,10 @@ critic:
       optimizer_offload: False
   ppo_micro_batch_size_per_gpu: 4
 
+reward_model:
+  reward_fn_path: rewards/gsm8k_reward.py
+  reward_fn_name: compute_score
+
 algorithm:
   gamma: 1.0
   lam: 1.0
@@ -88,7 +92,7 @@ trainer:
   total_epochs: 15
   project_name: gsm8k_ppo
   experiment_name: qwen3_1.7b_ppo
-  logger: ['console']
+  logger: ['console', 'wandb']
   val_generations_to_log_to_wandb: 0
   nnodes: 1
   n_gpus_per_node: 2        # reduce to 1 for Colab
