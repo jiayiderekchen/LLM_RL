@@ -1,8 +1,8 @@
 """
-VERL PPO training launcher for Colab.
+VERL PPO training launcher for Colab terminal.
 
-Uses VERL's Python API to properly inject the custom GSM8K reward function,
-avoiding the CLI Hydra struct conflict with reward_model.* keys.
+Loads the project YAML config and launches training via Hydra's compose API,
+so the config is properly merged with verl's structured defaults.
 
 Usage (from repo root):
     python scripts/train_ppo_colab.py \
@@ -37,6 +37,7 @@ def main():
     # ── Load base config ────────────────────────────────────────────────────
     config_path = os.path.join(args.repo_dir, "configs", "qwen3_gsm8k_ppo.yaml")
     config = OmegaConf.load(config_path)
+    OmegaConf.set_struct(config, False)
 
     # ── GPU-aware overrides ─────────────────────────────────────────────────
     gpu_mem_gb = (
@@ -55,7 +56,9 @@ def main():
         config.actor_rollout_ref.rollout.response_length = 512
         config.actor_rollout_ref.rollout.gpu_memory_utilization = 0.35
         config.actor_rollout_ref.model.enable_gradient_checkpointing = True
-        OmegaConf.update(config, "actor_rollout_ref.model.fsdp_config.param_offload", True)
+        # param_offload lives under actor.fsdp_config and ref.fsdp_config (not model.fsdp_config)
+        OmegaConf.update(config, "actor_rollout_ref.actor.fsdp_config.param_offload", True)
+        OmegaConf.update(config, "actor_rollout_ref.ref.fsdp_config.param_offload", True)
         config.critic.ppo_micro_batch_size_per_gpu = 2
         config.critic.model.enable_gradient_checkpointing = True
         OmegaConf.update(config, "critic.model.fsdp_config.param_offload", True)
@@ -70,29 +73,11 @@ def main():
     config.trainer.experiment_name = args.experiment_name
     config.trainer.logger = ["console", "wandb"] if args.use_wandb else ["console"]
 
-    # ── Reward function and compatibility keys ──────────────────────────────
-    # Keep both legacy and new reward keys for cross-version VERL compatibility.
-    OmegaConf.set_struct(config, False)
-    config.custom_reward_function = OmegaConf.create({
-        "path": os.path.join(args.repo_dir, "rewards/gsm8k_reward.py"),
-        "name": "compute_score",
-    })
-    config.reward = OmegaConf.create({
-        "custom_reward_function": {
-            "path": os.path.join(args.repo_dir, "rewards/gsm8k_reward.py"),
-            "name": "compute_score",
-        }
-    })
-    # Newer VERL versions expect these top-level keys in struct mode.
-    if "sandbox_fusion" not in config:
-        config.sandbox_fusion = OmegaConf.create(
-            {"enable": None, "url": None, "api_key": None, "timeout": None}
-        )
-    if "ray_kwargs" not in config:
-        config.ray_kwargs = OmegaConf.create({})
-    if "transfer_queue" not in config:
-        config.transfer_queue = OmegaConf.create({"enable": False})
-    OmegaConf.set_struct(config, True)
+    # ── Reward function path ────────────────────────────────────────────────
+    reward_path = os.path.join(args.repo_dir, "rewards/gsm8k_reward.py")
+    config.custom_reward_function.path = reward_path
+    config.reward.custom_reward_function.path = reward_path
+    config.reward.custom_reward_function.name = "compute_score"
 
     print("Final config:")
     print(OmegaConf.to_yaml(config))

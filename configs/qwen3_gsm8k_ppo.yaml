@@ -1,6 +1,7 @@
 # VERL PPO Training Config for Qwen3-1.7B on GSM8K
+# Override config for verl/trainer/config/ppo_trainer.yaml schema.
 # Adjust n_gpus_per_node and batch sizes based on your hardware.
-# Colab (T4 16GB): use configs/qwen3_gsm8k_ppo_colab.yaml overrides instead.
+# Colab (T4 16GB): pass --n_gpus 1 to train_ppo.sh or use train_ppo_colab.py.
 
 data:
   tokenizer: null
@@ -34,10 +35,6 @@ actor_rollout_ref:
     override_config: {}
     enable_gradient_checkpointing: True
     use_remove_padding: False
-    fsdp_config:
-      param_offload: False
-      grad_offload: False
-      optimizer_offload: False
   actor:
     strategy: fsdp
     ppo_mini_batch_size: 64
@@ -45,19 +42,18 @@ actor_rollout_ref:
     grad_clip: 1.0
     clip_ratio: 0.2
     entropy_coeff: 0.001
+    use_kl_loss: false
     ppo_epochs: 1
     optim:
       lr: 1.0e-6
       lr_warmup_steps: 10
-      lr_min_ratio: 0.0
+      min_lr_ratio: 0.0
       warmup_style: constant
       total_training_steps: -1
   rollout:
     name: vllm
     temperature: 1.0
     top_p: 1.0
-    prompt_length: 512
-    response_length: 1024
     tensor_model_parallel_size: 1
     gpu_memory_utilization: 0.4
     ignore_eos: False
@@ -66,16 +62,16 @@ actor_rollout_ref:
   ref:
     fsdp_config:
       param_offload: True
-      grad_offload: False
       optimizer_offload: False
     log_prob_micro_batch_size: 4
 
 critic:
+  enable: null
   strategy: fsdp
   optim:
     lr: 2.0e-6
     lr_warmup_steps: 10
-    lr_min_ratio: 0.0
+    min_lr_ratio: 0.0
     warmup_style: constant
     total_training_steps: -1
   model:
@@ -87,7 +83,6 @@ critic:
     use_remove_padding: False
     fsdp_config:
       param_offload: False
-      grad_offload: False
       optimizer_offload: False
   ppo_micro_batch_size_per_gpu: 4
 
@@ -101,51 +96,13 @@ reward:
   custom_reward_function:
     path: rewards/gsm8k_reward.py
     name: compute_score
-  reward_manager: null
-  reward_model:
-    enable: null
-    enable_resource_pool: null
-    n_gpus_per_node: null
-    nnodes: null
-    model_path: null
-    # Legacy-compatible fields kept to avoid migration breakage across versions.
-    reward_loop_source: null
-    reward_loop_module_path: null
-    reward_loop_class_name: null
-    model:
-      path: null
-      external_lib: null
-      trust_remote_code: null
-    rollout:
-      name: null
-      dtype: null
-      gpu_memory_utilization: null
-      enforce_eager: null
-      cudagraph_capture_sizes: null
-      free_cache_engine: null
-      data_parallel_size: null
-      expert_parallel_size: null
-      tensor_model_parallel_size: null
-      max_num_batched_tokens: null
-      max_model_len: null
-      max_num_seqs: null
-      load_format: null
-      engine_kwargs: null
-      limit_images: null
-      enable_chunked_prefill: null
-      enable_prefix_caching: null
-      disable_log_stats: null
-      skip_tokenizer_init: null
-    prompt_length: null
-    response_length: null
 
+# Keep default Ray init kwargs unless explicitly overridden.
 sandbox_fusion:
-  # New schema fields (keep null to disable sandbox integration).
   url: null
   max_concurrent: null
   memory_limit_mb: null
 
-# Keep default Ray init kwargs unless explicitly overridden.
 ray_kwargs:
   ray_init:
     num_cpus: null
@@ -211,7 +168,6 @@ trainer:
   experiment_name: qwen3_1.7b_ppo
   logger: ['console', 'wandb']
   log_val_generations: 0
-  val_generations_to_log_to_wandb: 0
   nnodes: 1
   n_gpus_per_node: 2        # reduce to 1 for Colab
   save_freq: 50
