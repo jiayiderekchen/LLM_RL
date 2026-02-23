@@ -81,6 +81,11 @@ custom_reward_function:
   path: rewards/gsm8k_reward.py
   name: compute_score
 
+reward:
+  custom_reward_function:
+    path: rewards/gsm8k_reward.py
+    name: compute_score
+
 reward_model:
   num_workers: null
   reward_manager: null
