@@ -1,0 +1,11 @@
+torch>=2.2.0
+transformers>=4.44.0
+datasets
+accelerate
+vllm
+flash-attn
+sympy
+regex
+pandas
+pyarrow
+huggingface-hub

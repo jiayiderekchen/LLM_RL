@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+
+# Data and model artifacts
+data/gsm8k/
+checkpoints/
+evaluation/results/
+training.log
+wandb/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# macOS
+.DS_Store
+.history/
