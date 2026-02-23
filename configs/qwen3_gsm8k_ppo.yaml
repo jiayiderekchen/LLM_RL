@@ -86,6 +86,13 @@ reward:
     path: rewards/gsm8k_reward.py
     name: compute_score
 
+sandbox_fusion:
+  # Keep disabled; present only to satisfy strict config schema in newer VERL.
+  enable: null
+  url: null
+  api_key: null
+  timeout: null
+
 reward_model:
   num_workers: null
   reward_manager: null
