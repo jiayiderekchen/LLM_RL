@@ -13,6 +13,7 @@ Each row has columns:
 import argparse
 import os
 
+import pandas as pd
 from datasets import load_dataset
 
 
@@ -41,8 +42,6 @@ def prepare(output_dir: str = "data/gsm8k") -> None:
                     "answer": sample["answer"],
                 }
             )
-
-        import pandas as pd
 
         df = pd.DataFrame(rows)
         out_path = os.path.join(output_dir, f"{split}.parquet")

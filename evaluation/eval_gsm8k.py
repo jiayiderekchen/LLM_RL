@@ -19,6 +19,7 @@ import time
 import torch
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from rewards.gsm8k_reward import compute_score
@@ -42,10 +43,15 @@ def evaluate(
     split: str = "test",
     max_samples: int = -1,
     max_new_tokens: int = 512,
+    batch_size: int = 8,
     device: str = "cuda",
-) -> dict:
+) -> tuple:
     print(f"Loading model: {model_path}")
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"  # required for batched generation
+
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         torch_dtype=torch.float16,
@@ -53,6 +59,7 @@ def evaluate(
         trust_remote_code=True,
     )
     model.eval()
+    print("Model loaded.")
 
     ds = load_dataset("gsm8k", "main")[split]
     if max_samples > 0:
@@ -63,40 +70,56 @@ def evaluate(
     results = []
     t0 = time.time()
 
-    for i, sample in enumerate(ds):
-        prompt_text = build_prompt(tokenizer, sample["question"])
-        inputs = tokenizer(prompt_text, return_tensors="pt").to(device)
+    # Build all prompts upfront
+    all_prompts = [build_prompt(tokenizer, s["question"]) for s in ds]
+    all_answers = [s["answer"] for s in ds]
+    all_questions = [s["question"] for s in ds]
+
+    pbar = tqdm(total=len(all_prompts), desc="Evaluating", unit="sample")
+
+    for batch_start in range(0, len(all_prompts), batch_size):
+        batch_prompts = all_prompts[batch_start: batch_start + batch_size]
+        batch_answers = all_answers[batch_start: batch_start + batch_size]
+        batch_questions = all_questions[batch_start: batch_start + batch_size]
+
+        inputs = tokenizer(
+            batch_prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512,
+        ).to(device)
 
         output_ids = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,
-            do_sample=False,          # greedy decoding for eval
-            temperature=1.0,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-        # Decode only the new tokens
-        gen_ids = output_ids[0][inputs["input_ids"].shape[1]:]
-        response = tokenizer.decode(gen_ids, skip_special_tokens=True)
-
-        score = compute_score(response, sample["answer"])
-        correct += int(score == 1.0)
-        total += 1
-
-        results.append(
-            {
-                "question": sample["question"],
-                "ground_truth": sample["answer"],
-                "response": response,
-                "correct": score == 1.0,
-            }
+            do_sample=False,
+            pad_token_id=tokenizer.pad_token_id,
         )
 
-        if (i + 1) % 50 == 0:
-            elapsed = time.time() - t0
-            print(
-                f"  [{i+1}/{len(ds)}] accuracy={correct/total:.3f}  "
-                f"elapsed={elapsed:.0f}s"
+        # Decode only new tokens per sample.
+        # With left-padding, all rows in the batch share the same padded input
+        # length (inputs["input_ids"].shape[1]), so we slice uniformly.
+        input_len = inputs["input_ids"].shape[1]
+        for j in range(len(batch_prompts)):
+            gen_ids = output_ids[j][input_len:]
+            response = tokenizer.decode(gen_ids, skip_special_tokens=True)
+            score = compute_score(response, batch_answers[j])
+            correct += int(score == 1.0)
+            total += 1
+            results.append(
+                {
+                    "question": batch_questions[j],
+                    "ground_truth": batch_answers[j],
+                    "response": response,
+                    "correct": score == 1.0,
+                }
             )
+
+        pbar.update(len(batch_prompts))
+        pbar.set_postfix(accuracy=f"{correct/total:.3f}", samples_per_s=f"{total/(time.time()-t0):.1f}")
+
+    pbar.close()
 
     accuracy = correct / total
     report = {
@@ -116,6 +139,7 @@ def main():
     parser.add_argument("--split", default="test")
     parser.add_argument("--max_samples", type=int, default=-1)
     parser.add_argument("--max_new_tokens", type=int, default=512)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--output_dir", default="evaluation/results")
     args = parser.parse_args()
 
@@ -124,6 +148,7 @@ def main():
         split=args.split,
         max_samples=args.max_samples,
         max_new_tokens=args.max_new_tokens,
+        batch_size=args.batch_size,
     )
 
     os.makedirs(args.output_dir, exist_ok=True)
