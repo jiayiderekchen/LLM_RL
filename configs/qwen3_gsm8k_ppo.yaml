@@ -76,10 +76,6 @@ critic:
       optimizer_offload: False
   ppo_micro_batch_size_per_gpu: 4
 
-reward_model:
-  reward_fn_path: rewards/gsm8k_reward.py
-  reward_fn_name: compute_score
-
 algorithm:
   gamma: 1.0
   lam: 1.0
