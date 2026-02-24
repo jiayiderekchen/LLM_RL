@@ -72,7 +72,7 @@ python -m verl.trainer.main_ppo \
     custom_reward_function.path="$(pwd)/rewards/gsm8k_reward.py" \
     custom_reward_function.name=compute_score \
     algorithm.adv_estimator=gae \
-    algorithm.use_kl_in_reward=false \
+    algorithm.use_kl_in_reward=true \
     algorithm.kl_ctrl.kl_coef=0.001 \
     trainer.balance_batch=true \
     trainer.total_epochs=15 \
