@@ -54,7 +54,7 @@ def evaluate(
 
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        torch_dtype=torch.float16,
+        dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
     )
@@ -104,7 +104,7 @@ def evaluate(
         for j in range(len(batch_prompts)):
             gen_ids = output_ids[j][input_len:]
             response = tokenizer.decode(gen_ids, skip_special_tokens=True)
-            score = compute_score(response, batch_answers[j])
+            score = compute_score("gsm8k", response, batch_answers[j])
             correct += int(score == 1.0)
             total += 1
             results.append(
@@ -136,6 +136,8 @@ def evaluate(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", required=True)
+    # If a verl checkpoint dir is passed, auto-resolve to actor/huggingface subdir
+    # or instruct user to run model_merger.py first.
     parser.add_argument("--split", default="test")
     parser.add_argument("--max_samples", type=int, default=-1)
     parser.add_argument("--max_new_tokens", type=int, default=512)
@@ -143,8 +145,33 @@ def main():
     parser.add_argument("--output_dir", default="evaluation/results")
     args = parser.parse_args()
 
+    model_path = args.model_path
+    # Auto-resolve verl checkpoint structure:
+    # global_step_N/actor/huggingface  (if already merged to HF format)
+    for candidate in [
+        os.path.join(model_path, "actor", "huggingface"),
+        os.path.join(model_path, "actor"),
+    ]:
+        if os.path.isfile(os.path.join(candidate, "config.json")):
+            print(f"[eval] Resolved verl checkpoint → {candidate}")
+            model_path = candidate
+            break
+
+    if not os.path.isfile(os.path.join(model_path, "config.json")) and not model_path.startswith("Qwen/"):
+        print(
+            f"ERROR: No config.json found in {model_path}\n"
+            "This is an FSDP shard checkpoint. Convert it first:\n\n"
+            "  python /content/verl/scripts/model_merger.py \\\n"
+            "      --backend fsdp \\\n"
+            f"      --hf_model_path Qwen/Qwen3-1.7B \\\n"
+            f"      --local_dir {args.model_path}/actor \\\n"
+            f"      --output_dir {args.model_path}_hf\n\n"
+            f"Then eval with --model_path {args.model_path}_hf"
+        )
+        sys.exit(1)
+
     report, results = evaluate(
-        args.model_path,
+        model_path,
         split=args.split,
         max_samples=args.max_samples,
         max_new_tokens=args.max_new_tokens,
@@ -152,7 +179,7 @@ def main():
     )
 
     os.makedirs(args.output_dir, exist_ok=True)
-    model_name = os.path.basename(args.model_path.rstrip("/"))
+    model_name = os.path.basename(model_path.rstrip("/"))
     out_path = os.path.join(args.output_dir, f"{model_name}_results.json")
     with open(out_path, "w") as f:
         json.dump({"report": report, "samples": results}, f, indent=2)
